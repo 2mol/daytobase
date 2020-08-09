@@ -7,6 +7,10 @@ provider "archive" {
   version = "~>1.3"
 }
 
+provider "random" {
+  version = "~> 2.3"
+}
+
 resource "null_resource" "pip" {
   triggers = {
     main         = "${base64sha256(file("../lambda/main.py"))}"
@@ -38,6 +42,7 @@ resource "aws_lambda_function" "daytobase" {
   environment {
     variables = {
       TELEGRAM_TOKEN = var.telegram_token
+      S3_BUCKET_ID   = aws_s3_bucket.bucket.id
     }
   }
 }
@@ -87,6 +92,25 @@ resource "aws_lambda_permission" "apigw" {
 #   name              = "/aws/lambda/${aws_lambda_function.daytobase.function_name}"
 #   retention_in_days = 30
 # }
+
+
+# -----------------------------------------------------------------------------
+# my BUCKIT
+# -----------------------------------------------------------------------------
+
+resource "random_id" "randomBucketId" {
+  # keepers = {
+  #   # Generate a new ID only when a new resource group is defined
+  #   resource_group = azurerm_resource_group.rg.name
+  # }
+  byte_length = 8
+}
+
+resource "aws_s3_bucket" "bucket" {
+  bucket = "daytobase-${random_id.randomBucketId.hex}"
+  acl    = "public"
+  # acl    = "private"
+}
 
 
 # -----------------------------------------------------------------------------
@@ -162,6 +186,15 @@ resource "aws_api_gateway_deployment" "deployment" {
   }
 }
 
+# -----------------------------------------------------------------------------
+# outputs being put out
+# -----------------------------------------------------------------------------
+
+
 output "api_url" {
   value = "${aws_api_gateway_deployment.deployment.invoke_url}/${aws_api_gateway_resource.proxy.path_part}"
+}
+
+output "bucket_id" {
+  value = aws_s3_bucket.bucket.id
 }

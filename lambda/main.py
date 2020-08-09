@@ -27,9 +27,10 @@ def handler(event, context):
     # req =  request.Request(send_url, data=data_encoded)
     # resp = request.urlopen(req)
 
+    bucket_id = os.environ['S3_BUCKET_ID']
 
     # s3_client.download_file('buckit-604f47116c162f31', 'iris.csv', '/tmp/iris.csv')
-    blob_object = s3_client.get_object(Bucket='buckit-604f47116c162f31', Key='daytobase.test.s3.csv')
+    blob_object = s3_client.get_object(Bucket=bucket_id, Key='daytobase.test.s3.csv')
     # blob_content = json.loads(blob_object['Body'].read().decode('utf-8'))
     blob_content = blob_object['Body'].read().decode('utf-8')
     # response_body['blob_content'] = blob_content
