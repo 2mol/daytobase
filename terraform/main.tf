@@ -11,6 +11,10 @@ provider "random" {
   version = "~> 2.3"
 }
 
+provider "null" {
+  version = "~> 2.1"
+}
+
 resource "null_resource" "pip" {
   triggers = {
     main         = "${base64sha256(file("../lambda/main.py"))}"
@@ -42,14 +46,14 @@ resource "aws_lambda_function" "daytobase" {
   environment {
     variables = {
       TELEGRAM_TOKEN = var.telegram_token
-      S3_BUCKET_ID   = aws_s3_bucket.bucket.id
+      S3_BUCKET_ID   = aws_s3_bucket.daytobase.id
     }
   }
 }
 
 resource "aws_iam_role" "lambda_exec" {
   tags        = var.tags
-  name        = "daytobase_iam"
+  name        = "daytobase_lambda_iam"
   path        = "/"
   description = "Allows Lambda Function to call AWS services on your behalf."
 
@@ -106,11 +110,45 @@ resource "random_id" "randomBucketId" {
   byte_length = 8
 }
 
-resource "aws_s3_bucket" "bucket" {
+resource "aws_s3_bucket" "daytobase" {
   bucket = "daytobase-${random_id.randomBucketId.hex}"
-  acl    = "public"
-  # acl    = "private"
+  # TODO: this needs proper IAM:
+  acl = "public"
+  # acl = "private"
 }
+
+resource "aws_s3_bucket_object" "testObject" {
+  bucket = aws_s3_bucket.daytobase.bucket
+  key    = "test_file"
+  source = "../README.md"
+  # TODO: this needs proper IAM:
+  acl = "public-read"
+
+  etag = filemd5("../README.md")
+}
+
+# resource "aws_s3_bucket_policy" "daytobase" {
+#   bucket = aws_s3_bucket.daytobase.id
+
+#   policy = <<POLICY
+# {
+#   "Version": "2012-10-17",
+#   "Id": "MYBUCKETPOLICY",
+#   "Statement": [
+#     {
+#       "Sid": "IPAllow",
+#       "Effect": "Deny",
+#       "Principal": "*",
+#       "Action": "s3:*",
+#       "Resource": "arn:aws:s3:::my_tf_test_bucket/*",
+#       "Condition": {
+#          "IpAddress": {"aws:SourceIp": "8.8.8.8/32"}
+#       }
+#     }
+#   ]
+# }
+# POLICY
+# }
 
 
 # -----------------------------------------------------------------------------
@@ -196,5 +234,5 @@ output "api_url" {
 }
 
 output "bucket_id" {
-  value = aws_s3_bucket.bucket.id
+  value = aws_s3_bucket.daytobase.id
 }
