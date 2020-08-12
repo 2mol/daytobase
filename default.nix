@@ -1,5 +1,5 @@
 # { nixpkgs ? import <nixpkgs> {} }:
-{ pkgs ? import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/2b7c0dcdaab946153b0eaba5f2420f15ea27b0d6.tar.gz") {}}:
+{ pkgs ? import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/cebdc8d51604033e0408a08f57afdd31fff4f33a.tar.gz") {}}:
 
 with pkgs; mkShell {
   buildInputs = [

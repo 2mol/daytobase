@@ -39,7 +39,7 @@ resource "aws_lambda_function" "daytobase" {
   function_name    = "daytobase_lambda"
   handler          = "main.handler"
   runtime          = "python3.8"
-  role             = aws_iam_role.lambda_exec.arn
+  role             = aws_iam_role.daytobase.arn
   filename         = "/tmp/lambda.zip"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
@@ -51,11 +51,11 @@ resource "aws_lambda_function" "daytobase" {
   }
 }
 
-resource "aws_iam_role" "lambda_exec" {
+resource "aws_iam_role" "daytobase" {
   tags        = var.tags
-  name        = "daytobase_lambda_iam"
+  name        = "daytobase_iam_role"
   path        = "/"
-  description = "Allows Lambda Function to call AWS services on your behalf."
+  description = "Allows Lambda Function to call AWS services on your behalf. Also has access to the S3 bucket."
 
   assume_role_policy = <<EOF
 {
@@ -74,8 +74,31 @@ resource "aws_iam_role" "lambda_exec" {
 EOF
 }
 
+resource "aws_iam_role_policy" "s3_policy" {
+  name = "test_policy"
+  role = aws_iam_role.daytobase.id
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ExampleStmt",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:s3:::AWSDOC-EXAMPLE-BUCKET/*"
+      ]
+    }
+  ]
+}
+  EOF
+}
+
 resource "aws_iam_role_policy_attachment" "logs_policy" {
-  role       = aws_iam_role.lambda_exec.name
+  role       = aws_iam_role.daytobase.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
@@ -112,43 +135,45 @@ resource "random_id" "randomBucketId" {
 
 resource "aws_s3_bucket" "daytobase" {
   bucket = "daytobase-${random_id.randomBucketId.hex}"
-  # TODO: this needs proper IAM:
-  acl = "public"
-  # acl = "private"
+  acl    = "private"
 }
 
 resource "aws_s3_bucket_object" "testObject" {
   bucket = aws_s3_bucket.daytobase.bucket
+  # TODO: instead of a dumb test file, we could already upload an empty database?
   key    = "test_file"
   source = "../README.md"
-  # TODO: this needs proper IAM:
-  acl = "public-read"
 
   etag = filemd5("../README.md")
 }
 
-# resource "aws_s3_bucket_policy" "daytobase" {
-#   bucket = aws_s3_bucket.daytobase.id
+resource "aws_s3_bucket_policy" "daytobase" {
+  bucket = aws_s3_bucket.daytobase.id
 
-#   policy = <<POLICY
-# {
-#   "Version": "2012-10-17",
-#   "Id": "MYBUCKETPOLICY",
-#   "Statement": [
-#     {
-#       "Sid": "IPAllow",
-#       "Effect": "Deny",
-#       "Principal": "*",
-#       "Action": "s3:*",
-#       "Resource": "arn:aws:s3:::my_tf_test_bucket/*",
-#       "Condition": {
-#          "IpAddress": {"aws:SourceIp": "8.8.8.8/32"}
-#       }
-#     }
-#   ]
-# }
-# POLICY
-# }
+  policy = <<POLICY
+{
+  "Id": "DaytobaseBucketPolicy",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowDaytobaseRoleToS3",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "${aws_s3_bucket.daytobase.arn}/*"
+      ],
+      "Principal": {
+        "AWS": [
+          "${aws_iam_role.daytobase.arn}"
+        ]
+      }
+    }
+  ]
+}
+POLICY
+}
 
 
 # -----------------------------------------------------------------------------
