@@ -158,7 +158,7 @@ resource "aws_s3_bucket_policy" "daytobase" {
     {
       "Sid": "AllowDaytobaseRoleToS3",
       "Action": [
-        "s3:GetObject"
+        "s3:*"
       ],
       "Effect": "Allow",
       "Resource": [
