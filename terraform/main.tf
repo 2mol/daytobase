@@ -136,6 +136,7 @@ resource "random_id" "randomBucketId" {
 resource "aws_s3_bucket" "daytobase" {
   bucket = "daytobase-${random_id.randomBucketId.hex}"
   acl    = "private"
+  # TODO: encrypt
 }
 
 resource "aws_s3_bucket_object" "testObject" {
